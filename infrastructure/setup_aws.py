@@ -21,7 +21,6 @@ Usage
     python infrastructure/setup_aws.py
 """
 
-import json
 import logging
 import os
 import sys

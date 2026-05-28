@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .gitignore — Real-Time Transaction Anomaly Detection Engine
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Credentials & secrets (NEVER commit these) ───────────────────────────────
+.env
+*.pem
+*.key
+secrets/
+
+# ── Python cache ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env.local
+.env.*.local
+
+# ── Spark checkpoints (local dev) ─────────────────────────────────────────────
+checkpoints/
+/tmp/
+
+# ── Spark / Java build artifacts ──────────────────────────────────────────────
+*.jar
+metastore_db/
+derby.log
+spark-warehouse/
+.ivy2/
+
+# ── Parquet / data files ──────────────────────────────────────────────────────
+*.parquet
+*.snappy.parquet
+data/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Pytest / coverage ──────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# ── Docker volumes (if mounted locally) ───────────────────────────────────────
+volumes/
