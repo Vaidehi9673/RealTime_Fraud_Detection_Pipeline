@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.dashboard — Streamlit Anomaly Monitor
+# Lightweight Python image for ARM64 / Apple Silicon.
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM python:3.11-slim
+
+LABEL description="Streamlit dashboard — polls DynamoDB for live anomaly data"
+
+WORKDIR /app
+
+# Install dashboard dependencies
+RUN pip install --no-cache-dir \
+    streamlit==1.35.0 \
+    boto3==1.34.0 \
+    botocore==1.34.0 \
+    pandas==2.2.0 \
+    plotly==5.20.0 \
+    python-dotenv==1.0.0
+
+# Copy application files
+COPY app.py .
+COPY config/ ./config/
+
+EXPOSE 8501
+
+# Disable Streamlit's telemetry and browser auto-open inside Docker
+ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_SERVER_PORT=8501
+
+CMD ["streamlit", "run", "app.py", \
+     "--server.address=0.0.0.0", \
+     "--server.port=8501"]

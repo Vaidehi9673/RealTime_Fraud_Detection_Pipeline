@@ -1,0 +1,87 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — Local Development Environment
+# Optimised for ARM64 / Apple Silicon (M1/M2/M3 Mac).
+#
+# Services
+# ────────
+#   generator   — transaction_generator.py (Python, needs AWS creds)
+#   spark       — PySpark Structured Streaming job
+#   dashboard   — Streamlit app (port 8501)
+#
+# Usage
+# ─────
+#   # First time: build images
+#   docker compose build
+#
+#   # Start all services (generator + spark + dashboard)
+#   docker compose up
+#
+#   # Start only the Streamlit dashboard (if Spark runs on host)
+#   docker compose up dashboard
+#
+#   # Stop everything
+#   docker compose down
+#
+# Environment
+# ───────────
+#   All services inherit variables from the host .env file.
+#   Make sure you have copied .env.example → .env and filled in your values.
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+# ── Common environment block (merged into every service) ─────────────────────
+x-aws-env: &aws-env
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+  KINESIS_STREAM_NAME: ${KINESIS_STREAM_NAME:-live-transactions}
+  DYNAMODB_ANOMALIES_TABLE: ${DYNAMODB_ANOMALIES_TABLE:-transaction_anomalies}
+  S3_BUCKET: ${S3_BUCKET}
+
+services:
+
+  # ── Transaction Generator ─────────────────────────────────────────────────
+  generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.generator
+    platform: linux/arm64   # native on Apple Silicon; remove for x86_64 hosts
+    env_file: .env
+    environment:
+      <<: *aws-env
+      GENERATOR_INTERVAL_SECONDS: ${GENERATOR_INTERVAL_SECONDS:-0.5}
+      ANOMALY_RATE: ${ANOMALY_RATE:-0.05}
+      ANOMALY_AMOUNT_THRESHOLD: ${ANOMALY_AMOUNT_THRESHOLD:-2000.0}
+    restart: on-failure
+    depends_on: []   # no local dependencies — writes straight to AWS Kinesis
+
+  # ── PySpark Streaming Job ─────────────────────────────────────────────────
+  spark:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    platform: linux/arm64
+    env_file: .env
+    environment:
+      <<: *aws-env
+      CHECKPOINT_LOCATION: /app/checkpoints
+      ANOMALY_AMOUNT_THRESHOLD: ${ANOMALY_AMOUNT_THRESHOLD:-2000.0}
+      HIGH_FREQUENCY_THRESHOLD: ${HIGH_FREQUENCY_THRESHOLD:-3}
+    volumes:
+      # Persist checkpoints across container restarts on the host machine
+      - ./checkpoints:/app/checkpoints
+    restart: on-failure
+
+  # ── Streamlit Dashboard ───────────────────────────────────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    platform: linux/arm64
+    env_file: .env
+    environment:
+      <<: *aws-env
+    ports:
+      - "8501:8501"    # Open http://localhost:8501 in your browser
+    restart: unless-stopped

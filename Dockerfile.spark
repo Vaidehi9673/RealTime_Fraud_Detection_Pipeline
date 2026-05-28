@@ -1,0 +1,42 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.spark — PySpark Structured Streaming Job
+#
+# Uses the official Bitnami Spark image which provides a pre-built ARM64 build
+# of Spark 3.5 with Java 17 — no manual JDK installation needed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM bitnami/spark:3.5
+
+USER root
+
+WORKDIR /app
+
+# Install Python dependencies into the Spark image's Python environment
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy project source
+COPY spark_streaming/ ./spark_streaming/
+COPY config/ ./config/
+
+# Download the Kinesis connector and Hadoop-AWS JARs at build time so the
+# container starts instantly (no Maven resolution delay at runtime).
+# Versions must match the Spark / Scala / Hadoop versions in the base image.
+RUN spark-submit \
+    --packages \
+      com.qubole.spark:spark-sql-kinesis_2.12:1.2.0_spark-3.0,\
+      org.apache.hadoop:hadoop-aws:3.3.4,\
+      com.amazonaws:aws-java-sdk-bundle:1.12.261 \
+    --class org.apache.spark.sql.SparkSession \
+    --master local \
+    /dev/null 2>/dev/null || true
+    # The above command intentionally "fails" (no main class), but it forces
+    # Spark to resolve and cache the Maven JARs in /root/.ivy2.
+
+CMD ["spark-submit", \
+     "--master", "local[*]", \
+     "--packages", "com.qubole.spark:spark-sql-kinesis_2.12:1.2.0_spark-3.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.261", \
+     "--conf", "spark.sql.shuffle.partitions=4", \
+     "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem", \
+     "--conf", "spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.DefaultAWSCredentialsProviderChain", \
+     "spark_streaming/fraud_detection_job.py"]

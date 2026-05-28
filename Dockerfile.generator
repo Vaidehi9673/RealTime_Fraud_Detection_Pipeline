@@ -1,0 +1,26 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.generator — Transaction Generator
+# Lightweight Python image for ARM64 / Apple Silicon.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# python:3.11-slim has an official ARM64 image (linux/arm64/v8)
+FROM python:3.11-slim
+
+LABEL maintainer="fraud-detection-pipeline"
+LABEL description="Mock POS transaction generator → AWS Kinesis"
+
+WORKDIR /app
+
+# Install only the packages needed by transaction_generator.py
+# Pinning versions for reproducible builds
+RUN pip install --no-cache-dir \
+    boto3==1.34.0 \
+    botocore==1.34.0 \
+    faker==20.1.0 \
+    python-dotenv==1.0.0
+
+# Copy source files
+COPY transaction_generator.py .
+COPY config/ ./config/
+
+CMD ["python", "transaction_generator.py"]
